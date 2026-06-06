@@ -117,7 +117,7 @@ def generate_mask(
     image_data_url = f"data:image/jpeg;base64,{b64_img}"
 
     aspect_ratio = _closest_aspect_ratio(w, h)
-    log(f"调用 AI API 中... (可能需要 15-30 秒)")
+    log(f"调用 AI API 中... (比例: {aspect_ratio}, 可能需要 15-30 秒)")
 
     payload = {
         "model": MODEL,

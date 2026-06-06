@@ -463,7 +463,7 @@ def run_gui():
     # 变量
     var_ai_input = tk.StringVar()
     var_ai_output = tk.StringVar()
-    var_ai_prompt = tk.StringVar(value="提取这张图的水面mask。水面为白色，其余部分为黑色，靠近岸边的地方要有过渡")
+    var_ai_prompt = tk.StringVar(value="提取这张图的水面mask。保持原图透视，水面为白色，其余部分为黑色，靠近岸边的地方要有过渡")
     var_ai_layer_name = tk.StringVar(value="AI_mask")
 
     # 输入图片
