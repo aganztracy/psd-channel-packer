@@ -84,10 +84,20 @@ def run_gui():
     ctk.set_default_color_theme("dark-blue")
 
     root = ctk.CTk()
-    root.title("PSD Channel Packer")
-    root.geometry("750x700")
-    root.minsize(700, 600)
+    root.title("PSD Channel Packer + AI Mask")
+    root.geometry("780x750")
+    root.minsize(720, 650)
     root.configure(fg_color=_BG_WINDOW)
+
+    # ── Tabview ──
+    tabview = ctk.CTkTabview(root, fg_color=_BG_WINDOW)
+    tabview.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+    tab_packer = tabview.add("Channel Packer")
+    tab_ai = tabview.add("AI Mask 生成")
+
+    # ══════════════════════════════════════════════════════
+    # TAB 1: Channel Packer
+    # ══════════════════════════════════════════════════════
 
     # ── 状态 ──
     psd_obj = [None]
@@ -103,9 +113,9 @@ def run_gui():
     var_format = tk.StringVar(value="PNG")
     var_output_path = tk.StringVar()
 
-    # ── 滚动主体 ──
-    main_scroll = ctk.CTkScrollableFrame(root, fg_color=_BG_WINDOW)
-    main_scroll.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+    # ── 滚动主体（Channel Packer tab）──
+    main_scroll = ctk.CTkScrollableFrame(tab_packer, fg_color=_BG_WINDOW)
+    main_scroll.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
     # ════════════════════════════════════════════
     # CARD 1: PSD 文件
@@ -443,6 +453,122 @@ def run_gui():
     btn_row.pack(fill=tk.X, padx=15, pady=(5, 10))
     ctk.CTkButton(btn_row, text="导出", font=_FONT_BOLD, width=140,
                   fg_color=_ACCENT, hover_color=_ACCENT_HOVER, command=do_export).pack(side=tk.LEFT)
+
+    # ══════════════════════════════════════════════════════
+    # TAB 2: AI Mask 生成
+    # ══════════════════════════════════════════════════════
+    ai_scroll = ctk.CTkScrollableFrame(tab_ai, fg_color=_BG_WINDOW)
+    ai_scroll.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+    # 变量
+    var_ai_input = tk.StringVar()
+    var_ai_psd = tk.StringVar()
+    var_ai_prompt = tk.StringVar(value="提取这张图的水面mask。水面为白色，其余部分为黑色，靠近岸边的地方要有过渡")
+    var_ai_layer_name = tk.StringVar(value="AI_mask")
+
+    # 输入图片
+    card_ai_input = ctk.CTkFrame(ai_scroll, fg_color=_BG_CARD, corner_radius=10)
+    card_ai_input.pack(fill=tk.X, pady=(0, 12))
+    ctk.CTkLabel(card_ai_input, text="AI Mask 生成", font=_FONT_TITLE, text_color=_FG_TEXT).pack(
+        anchor=tk.W, padx=15, pady=(10, 5))
+
+    row_ai_img = ctk.CTkFrame(card_ai_input, fg_color="transparent")
+    row_ai_img.pack(fill=tk.X, padx=15, pady=3)
+    ctk.CTkLabel(row_ai_img, text="输入图片", font=_FONT, width=80).pack(side=tk.LEFT)
+    ctk.CTkEntry(row_ai_img, textvariable=var_ai_input, font=_FONT, height=28).pack(
+        side=tk.LEFT, fill=tk.X, expand=True, padx=(10, 8))
+
+    def browse_ai_input():
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(filetypes=[("Image", "*.png *.jpg *.jpeg *.psd"), ("All", "*.*")])
+        if path:
+            var_ai_input.set(path)
+
+    ctk.CTkButton(row_ai_img, text="...", width=40, font=_FONT, command=browse_ai_input).pack(side=tk.LEFT)
+
+    # 目标 PSD
+    row_ai_psd = ctk.CTkFrame(card_ai_input, fg_color="transparent")
+    row_ai_psd.pack(fill=tk.X, padx=15, pady=3)
+    ctk.CTkLabel(row_ai_psd, text="目标 PSD", font=_FONT, width=80).pack(side=tk.LEFT)
+    ctk.CTkEntry(row_ai_psd, textvariable=var_ai_psd, font=_FONT, height=28).pack(
+        side=tk.LEFT, fill=tk.X, expand=True, padx=(10, 8))
+
+    def browse_ai_psd():
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(filetypes=[("PSD files", "*.psd"), ("All", "*.*")])
+        if path:
+            var_ai_psd.set(path)
+
+    ctk.CTkButton(row_ai_psd, text="...", width=40, font=_FONT, command=browse_ai_psd).pack(side=tk.LEFT)
+
+    # Prompt
+    row_ai_prompt = ctk.CTkFrame(card_ai_input, fg_color="transparent")
+    row_ai_prompt.pack(fill=tk.X, padx=15, pady=3)
+    ctk.CTkLabel(row_ai_prompt, text="Prompt", font=_FONT, width=80).pack(side=tk.LEFT)
+    ctk.CTkEntry(row_ai_prompt, textvariable=var_ai_prompt, font=_FONT, height=28).pack(
+        side=tk.LEFT, fill=tk.X, expand=True, padx=(10, 0))
+
+    # 图层名
+    row_ai_name = ctk.CTkFrame(card_ai_input, fg_color="transparent")
+    row_ai_name.pack(fill=tk.X, padx=15, pady=(3, 10))
+    ctk.CTkLabel(row_ai_name, text="图层名", font=_FONT, width=80).pack(side=tk.LEFT)
+    ctk.CTkEntry(row_ai_name, textvariable=var_ai_layer_name, font=_FONT, height=28, width=200).pack(
+        side=tk.LEFT, padx=(10, 0))
+
+    # 状态 + 按钮
+    card_ai_action = ctk.CTkFrame(ai_scroll, fg_color=_BG_CARD, corner_radius=10)
+    card_ai_action.pack(fill=tk.X, pady=(0, 12))
+
+    ai_status = ctk.CTkLabel(card_ai_action, text="", font=_FONT, text_color=_FG_DIM)
+    ai_status.pack(anchor=tk.W, padx=15, pady=(10, 0))
+
+    ai_btn_row = ctk.CTkFrame(card_ai_action, fg_color="transparent")
+    ai_btn_row.pack(fill=tk.X, padx=15, pady=(5, 10))
+
+    def do_ai_generate():
+        import threading
+        from ai_mask_gen import generate_mask_and_add_to_psd
+
+        input_img = var_ai_input.get()
+        psd_path = var_ai_psd.get()
+        prompt = var_ai_prompt.get()
+        layer_name = var_ai_layer_name.get() or "AI_mask"
+
+        if not input_img or not os.path.exists(input_img):
+            ai_status.configure(text="请选择有效的输入图片", text_color="#d44")
+            return
+        if not psd_path or not os.path.exists(psd_path):
+            ai_status.configure(text="请选择有效的目标 PSD", text_color="#d44")
+            return
+        if not prompt:
+            ai_status.configure(text="请填写 Prompt", text_color="#d44")
+            return
+
+        ai_btn.configure(state="disabled")
+        ai_status.configure(text="AI 生成中...", text_color=_FG_DIM)
+
+        def worker():
+            try:
+                output = generate_mask_and_add_to_psd(
+                    psd_path=psd_path,
+                    input_image_path=input_img,
+                    prompt=prompt,
+                    layer_name=layer_name,
+                    progress_cb=lambda msg: root.after(0, lambda m=msg: ai_status.configure(text=m, text_color=_FG_DIM)),
+                )
+                root.after(0, lambda: ai_status.configure(
+                    text=f"完成! 保存到: {output}", text_color="#52A852"))
+            except Exception as e:
+                root.after(0, lambda: ai_status.configure(
+                    text=f"错误: {e}", text_color="#d44"))
+            finally:
+                root.after(0, lambda: ai_btn.configure(state="normal"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    ai_btn = ctk.CTkButton(ai_btn_row, text="生成 Mask 并写入 PSD", font=_FONT_BOLD, width=200,
+                           fg_color=_ACCENT, hover_color=_ACCENT_HOVER, command=do_ai_generate)
+    ai_btn.pack(side=tk.LEFT)
 
     root.mainloop()
 
