@@ -92,8 +92,8 @@ def run_gui():
     # ── Tabview ──
     tabview = ctk.CTkTabview(root, fg_color=_BG_WINDOW)
     tabview.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-    tab_packer = tabview.add("Channel Packer")
     tab_ai = tabview.add("AI Mask 生成")
+    tab_packer = tabview.add("Channel Packer")
 
     # ══════════════════════════════════════════════════════
     # TAB 1: Channel Packer
@@ -462,7 +462,7 @@ def run_gui():
 
     # 变量
     var_ai_input = tk.StringVar()
-    var_ai_psd = tk.StringVar()
+    var_ai_output = tk.StringVar()
     var_ai_prompt = tk.StringVar(value="提取这张图的水面mask。水面为白色，其余部分为黑色，靠近岸边的地方要有过渡")
     var_ai_layer_name = tk.StringVar(value="AI_mask")
 
@@ -472,6 +472,9 @@ def run_gui():
     ctk.CTkLabel(card_ai_input, text="AI Mask 生成", font=_FONT_TITLE, text_color=_FG_TEXT).pack(
         anchor=tk.W, padx=15, pady=(10, 5))
 
+    ctk.CTkLabel(card_ai_input, text="输入一张图 → AI 生成 mask → 原图+mask 一起存为 PSD",
+                 font=_FONT, text_color=_FG_DIM).pack(anchor=tk.W, padx=15, pady=(0, 8))
+
     row_ai_img = ctk.CTkFrame(card_ai_input, fg_color="transparent")
     row_ai_img.pack(fill=tk.X, padx=15, pady=3)
     ctk.CTkLabel(row_ai_img, text="输入图片", font=_FONT, width=80).pack(side=tk.LEFT)
@@ -480,26 +483,15 @@ def run_gui():
 
     def browse_ai_input():
         from tkinter import filedialog
-        path = filedialog.askopenfilename(filetypes=[("Image", "*.png *.jpg *.jpeg *.psd"), ("All", "*.*")])
+        path = filedialog.askopenfilename(filetypes=[("Image", "*.png *.jpg *.jpeg"), ("All", "*.*")])
         if path:
             var_ai_input.set(path)
+            # 自动生成输出路径
+            stem = Path(path).stem
+            parent = Path(path).parent
+            var_ai_output.set(str(parent / f"{stem}_DO.psd"))
 
     ctk.CTkButton(row_ai_img, text="...", width=40, font=_FONT, command=browse_ai_input).pack(side=tk.LEFT)
-
-    # 目标 PSD
-    row_ai_psd = ctk.CTkFrame(card_ai_input, fg_color="transparent")
-    row_ai_psd.pack(fill=tk.X, padx=15, pady=3)
-    ctk.CTkLabel(row_ai_psd, text="目标 PSD", font=_FONT, width=80).pack(side=tk.LEFT)
-    ctk.CTkEntry(row_ai_psd, textvariable=var_ai_psd, font=_FONT, height=28).pack(
-        side=tk.LEFT, fill=tk.X, expand=True, padx=(10, 8))
-
-    def browse_ai_psd():
-        from tkinter import filedialog
-        path = filedialog.askopenfilename(filetypes=[("PSD files", "*.psd"), ("All", "*.*")])
-        if path:
-            var_ai_psd.set(path)
-
-    ctk.CTkButton(row_ai_psd, text="...", width=40, font=_FONT, command=browse_ai_psd).pack(side=tk.LEFT)
 
     # Prompt
     row_ai_prompt = ctk.CTkFrame(card_ai_input, fg_color="transparent")
@@ -510,10 +502,26 @@ def run_gui():
 
     # 图层名
     row_ai_name = ctk.CTkFrame(card_ai_input, fg_color="transparent")
-    row_ai_name.pack(fill=tk.X, padx=15, pady=(3, 10))
-    ctk.CTkLabel(row_ai_name, text="图层名", font=_FONT, width=80).pack(side=tk.LEFT)
+    row_ai_name.pack(fill=tk.X, padx=15, pady=3)
+    ctk.CTkLabel(row_ai_name, text="Mask 图层名", font=_FONT, width=80).pack(side=tk.LEFT)
     ctk.CTkEntry(row_ai_name, textvariable=var_ai_layer_name, font=_FONT, height=28, width=200).pack(
         side=tk.LEFT, padx=(10, 0))
+
+    # 输出路径
+    row_ai_out = ctk.CTkFrame(card_ai_input, fg_color="transparent")
+    row_ai_out.pack(fill=tk.X, padx=15, pady=(3, 10))
+    ctk.CTkLabel(row_ai_out, text="输出 PSD", font=_FONT, width=80).pack(side=tk.LEFT)
+    ctk.CTkEntry(row_ai_out, textvariable=var_ai_output, font=_FONT, height=28).pack(
+        side=tk.LEFT, fill=tk.X, expand=True, padx=(10, 8))
+
+    def browse_ai_output():
+        from tkinter import filedialog
+        path = filedialog.asksaveasfilename(defaultextension=".psd",
+                                            filetypes=[("PSD files", "*.psd")])
+        if path:
+            var_ai_output.set(path)
+
+    ctk.CTkButton(row_ai_out, text="...", width=40, font=_FONT, command=browse_ai_output).pack(side=tk.LEFT)
 
     # 状态 + 按钮
     card_ai_action = ctk.CTkFrame(ai_scroll, fg_color=_BG_CARD, corner_radius=10)
@@ -527,21 +535,21 @@ def run_gui():
 
     def do_ai_generate():
         import threading
-        from ai_mask_gen import generate_mask_and_add_to_psd
+        from ai_mask_gen import generate_mask_and_create_psd
 
         input_img = var_ai_input.get()
-        psd_path = var_ai_psd.get()
+        output_psd = var_ai_output.get()
         prompt = var_ai_prompt.get()
         layer_name = var_ai_layer_name.get() or "AI_mask"
 
         if not input_img or not os.path.exists(input_img):
             ai_status.configure(text="请选择有效的输入图片", text_color="#d44")
             return
-        if not psd_path or not os.path.exists(psd_path):
-            ai_status.configure(text="请选择有效的目标 PSD", text_color="#d44")
-            return
         if not prompt:
             ai_status.configure(text="请填写 Prompt", text_color="#d44")
+            return
+        if not output_psd:
+            ai_status.configure(text="请指定输出 PSD 路径", text_color="#d44")
             return
 
         ai_btn.configure(state="disabled")
@@ -549,15 +557,15 @@ def run_gui():
 
         def worker():
             try:
-                output = generate_mask_and_add_to_psd(
-                    psd_path=psd_path,
+                output = generate_mask_and_create_psd(
                     input_image_path=input_img,
                     prompt=prompt,
+                    output_psd_path=output_psd,
                     layer_name=layer_name,
                     progress_cb=lambda msg: root.after(0, lambda m=msg: ai_status.configure(text=m, text_color=_FG_DIM)),
                 )
                 root.after(0, lambda: ai_status.configure(
-                    text=f"完成! 保存到: {output}", text_color="#52A852"))
+                    text=f"完成! PSD: {output}", text_color="#52A852"))
             except Exception as e:
                 root.after(0, lambda: ai_status.configure(
                     text=f"错误: {e}", text_color="#d44"))

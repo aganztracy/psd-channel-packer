@@ -164,15 +164,19 @@ def generate_mask(
     return result_img
 
 
-def generate_mask_and_add_to_psd(
-    psd_path: str,
+def generate_mask_and_create_psd(
     input_image_path: str,
     prompt: str,
+    output_psd_path: str = None,
     layer_name: str = "AI_mask",
     progress_cb=None,
 ) -> str:
     """
-    生成 mask 并作为新图层添加到 PSD。
+    生成 mask，创建 PSD（原图层 + mask 图层）。
+    
+    PSD 结构：
+      - 原图（底层）
+      - AI_mask（顶层）
     
     Returns:
         输出 PSD 路径
@@ -186,26 +190,36 @@ def generate_mask_and_add_to_psd(
     # 生成 mask
     mask_img = generate_mask(input_image_path, prompt, progress_cb)
 
-    # 读取原 PSD
-    log("读取 PSD...")
-    psd = PSDImage.open(psd_path)
-    orig_w, orig_h = psd.width, psd.height
+    # 读取原图
+    log("读取原图...")
+    orig_img = Image.open(input_image_path).convert('RGBA')
+    orig_w, orig_h = orig_img.size
 
-    # resize mask 到 PSD 尺寸
+    # resize mask 到原图尺寸
     if mask_img.size != (orig_w, orig_h):
         log(f"Resize mask: {mask_img.size} → ({orig_w}, {orig_h})")
         mask_img = mask_img.resize((orig_w, orig_h), Image.LANCZOS)
 
-    # 添加为新图层
-    log(f"添加图层: {layer_name}")
+    # 创建 PSD
+    log("创建 PSD...")
+    psd = PSDImage.new(mode='RGBA', size=(orig_w, orig_h), depth=8)
+
+    # 先添加原图层（底层）— create_pixel_layer 放到最顶部，所以先创建的在底部
+    psd.create_pixel_layer(orig_img, name="原图", top=0, left=0, opacity=255)
+    # 再添加 mask 层（顶层）
     psd.create_pixel_layer(mask_img, name=layer_name, top=0, left=0, opacity=255)
 
-    # 保存（覆盖原文件或另存）
-    output_path = str(Path(psd_path).with_stem(Path(psd_path).stem + "_ai"))
-    psd.save(output_path)
-    log(f"PSD 保存: {output_path}")
+    # 保存
+    if not output_psd_path:
+        stem = Path(input_image_path).stem
+        parent = Path(input_image_path).parent
+        output_psd_path = str(parent / f"{stem}_DO.psd")
 
-    return output_path
+    Path(output_psd_path).parent.mkdir(parents=True, exist_ok=True)
+    psd.save(output_psd_path)
+    log(f"PSD 保存: {output_psd_path}")
+
+    return output_psd_path
 
 
 # ── 初始化编码 key ──
