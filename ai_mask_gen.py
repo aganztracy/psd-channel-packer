@@ -209,7 +209,7 @@ def generate_mask_and_create_psd(
     psd = PSDImage.new(mode='RGBA', size=(orig_w, orig_h), depth=8)
 
     # 先添加原图层（底层）— create_pixel_layer 放到最顶部，所以先创建的在底部
-    psd.create_pixel_layer(orig_img, name="原图", top=0, left=0, opacity=255)
+    psd.create_pixel_layer(orig_img, name="original", top=0, left=0, opacity=255)
     # 再添加 mask 层（顶层）
     psd.create_pixel_layer(mask_img, name=layer_name, top=0, left=0, opacity=255)
 
