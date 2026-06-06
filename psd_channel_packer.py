@@ -556,19 +556,20 @@ def run_gui():
         ai_status.configure(text="AI 生成中...", text_color=_FG_DIM)
 
         def worker():
+            def update_status(msg, color=_FG_DIM):
+                root.after(0, lambda: ai_status.configure(text=msg, text_color=color))
+
             try:
                 output = generate_mask_and_create_psd(
                     input_image_path=input_img,
                     prompt=prompt,
                     output_psd_path=output_psd,
                     layer_name=layer_name,
-                    progress_cb=lambda msg: root.after(0, lambda m=msg: ai_status.configure(text=m, text_color=_FG_DIM)),
+                    progress_cb=lambda msg: update_status(msg),
                 )
-                root.after(0, lambda: ai_status.configure(
-                    text=f"完成! PSD: {output}", text_color="#52A852"))
+                update_status(f"完成! PSD: {output}", "#52A852")
             except Exception as e:
-                root.after(0, lambda: ai_status.configure(
-                    text=f"错误: {e}", text_color="#d44"))
+                update_status(f"错误: {e}", "#d44")
             finally:
                 root.after(0, lambda: ai_btn.configure(state="normal"))
 

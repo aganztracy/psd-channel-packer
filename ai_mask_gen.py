@@ -96,6 +96,9 @@ def generate_mask(
         if progress_cb:
             progress_cb(msg)
 
+    import time as _time
+    _t0 = _time.time()
+
     api_key = get_api_key()
     url = f"{API_BASE}{I2I_PATH}"
 
@@ -114,7 +117,7 @@ def generate_mask(
     image_data_url = f"data:image/jpeg;base64,{b64_img}"
 
     aspect_ratio = _closest_aspect_ratio(w, h)
-    log(f"调用 AI API... (模型: {MODEL}, 比例: {aspect_ratio})")
+    log(f"调用 AI API 中... (可能需要 15-30 秒)")
 
     payload = {
         "model": MODEL,
@@ -159,7 +162,8 @@ def generate_mask(
         with urllib.request.urlopen(img_url, timeout=60) as resp:
             img_bytes = resp.read()
 
-    log("AI 生成完成!")
+    elapsed = _time.time() - _t0
+    log(f"AI 生成完成! ({elapsed:.1f}秒)")
     result_img = Image.open(BytesIO(img_bytes)).convert("RGBA")
     return result_img
 
