@@ -136,6 +136,7 @@ def run_gui():
         path = filedialog.askopenfilename(filetypes=[("PSD files", "*.psd"), ("All", "*.*")])
         if path:
             var_psd_path.set(path)
+            load_psd()
 
     ctk.CTkButton(row_psd, text="浏览", width=60, font=_FONT, command=browse_psd).pack(side=tk.LEFT, padx=(0, 8))
 
